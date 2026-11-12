@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Semáforo de ruido para el aula con marcador, sensibilidad regulable y aviso sonoro opcional.">
+<title>Semáforo del ruido</title>
+<style>
+:root{color-scheme:light;--paper:#fbf1ef;--ink:#39251f;--muted:#6b4c45;--line:#e6cbc8;--brown:#75483d;--wash:#f3dedf;--green:#12593b;--amber:#714800;--red:#93293c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Avenir Next",Avenir,system-ui,sans-serif;line-height:1.5}
+button,input,select{font:inherit}
+button,summary,select,input[type=checkbox],input[type=range]{cursor:pointer}
+button,select{min-height:46px;border:1px solid var(--line);border-radius:12px;padding:.65rem 1rem;background:white;color:var(--ink);font-weight:700}
+button:hover:not(:disabled){border-color:var(--brown);background:var(--wash)}
+button.primary{background:var(--brown);border-color:var(--brown);color:white}
+button.primary:hover:not(:disabled){background:#583129}
+button:disabled{opacity:.65;cursor:wait}
+:focus-visible{outline:3px solid #9b555d;outline-offset:4px}
+[hidden]{display:none!important}
+.shell{width:min(1160px,100% - 48px);margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:25px 0 18px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em}
+.mark{display:inline-flex;align-items:end;gap:3px;background:var(--ink);padding:9px;border-radius:10px;height:34px}
+.mark i{width:4px;background:#ecc2c6;border-radius:4px;height:8px}.mark i:nth-child(2){height:16px}.mark i:nth-child(3){height:12px}
+h1,h2,p{margin:0}h1{font-size:clamp(2.5rem,6vw,5.2rem);line-height:.99;letter-spacing:-.075em;margin:32px 0 20px}
+.intro{color:var(--muted);margin-bottom:26px;font-size:1.08rem}
+.board{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:16px}
+.signal,.score,.controls,details{border-radius:24px;border:1px solid var(--line)}
+.signal{--tint:#efd5d8;--state:#633a38;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:clamp(20px,4vw,54px);padding:clamp(18px,3.3vw,46px);min-height:330px;background:var(--tint);border-color:transparent}
+.signal[data-state=green]{--tint:#dff3e8;--state:var(--green)}
+.signal[data-state=amber]{--tint:#fff0c8;--state:var(--amber)}
+.signal[data-state=red]{--tint:#ffe4e8;--state:var(--red)}
+.lights{display:grid;gap:10px;padding:14px;border-radius:40px;background:#4d332c;box-shadow:0 7px 0 #332019,0 12px 20px #49251b24}
+.lamp{width:clamp(42px,6.4vw,76px);aspect-ratio:1;border-radius:50%;background:#694a41;display:grid;place-items:center;color:transparent;border:3px solid #805d51;font-weight:900;font-size:clamp(1.2rem,3vw,2.5rem)}
+[data-state=red] .lamp.red{background:#ff798d;border-color:#ffc0c9;color:#4b1320}
+[data-state=amber] .lamp.amber{background:#ffce60;border-color:#ffeab0;color:#4a3000}
+[data-state=green] .lamp.green{background:#80ecb1;border-color:#bdf9d5;color:#143e2b}
+.tag{color:var(--state);font-size:.85rem;font-weight:800;letter-spacing:.075em;text-transform:uppercase}
+.signal h2{font-size:clamp(1.9rem,5.4vw,4.6rem);line-height:1;letter-spacing:-.06em;margin:.38rem 0 .65rem;color:var(--state)}
+.signal p:last-child{color:var(--state);max-width:28ch}
+.score{background:#53352e;color:#fff;padding:clamp(22px,3vw,38px);display:flex;flex-direction:column;justify-content:center}
+.score h2{font-size:1.15rem;color:#f3d6d7}
+#points{font-size:clamp(4rem,9vw,7.2rem);font-weight:800;line-height:1.1;letter-spacing:-.07em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.score label{font-size:.95rem;color:#f9e7e7}
+progress{appearance:none;width:100%;height:9px;border:0;border-radius:20px;margin:12px 0 6px;overflow:hidden;background:#86645d;accent-color:#e9b7bf}
+progress::-webkit-progress-bar{background:#86645d}
+progress::-webkit-progress-value{background:#e9b7bf}
+progress::-moz-progress-bar{background:#e9b7bf}
+.goal{margin-top:18px;padding:13px 14px 10px;border-radius:14px;background:#69473f;color:#fff}
+.goal progress{margin:8px 0 0}
+.goal[data-reached="true"]{background:#dff3e8;color:#12593b}
+.goal[data-reached="true"] progress::-webkit-progress-value{background:#12593b}
+.goal[data-reached="true"] progress::-moz-progress-bar{background:#12593b}
+#goalStatus{font-size:.93rem;font-weight:750}
+#bestStreak{margin-top:11px;color:#f9e7e7;font-size:1rem;font-weight:750;font-variant-numeric:tabular-nums}
+#countdown{color:#f9e7e7;font-variant-numeric:tabular-nums;font-size:.92rem}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:22px;background:white;margin-top:16px}
+.actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sensitivity{display:grid;gap:2px;font-weight:750}
+.scale{display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);font-weight:500}
+input[type=range]{width:100%;min-height:28px;margin:0;accent-color:var(--brown)}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--brown);flex:none}
+.check{display:flex;align-items:center;gap:8px}
+#feedback{grid-column:1/-1;color:var(--red);font-weight:700}
+details{background:white;margin-top:14px;padding:0 22px}
+summary{font-weight:800;padding:15px 0}
+.settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:3px 0 20px}
+.field{display:flex;flex-direction:column;gap:6px;font-weight:750}
+.field small,.rules,footer{color:var(--muted);font-weight:500}
+.rules{grid-column:1/-1}
+footer{font-size:.86rem;padding:16px 0 25px}
+.signature{display:block;margin-top:10px;color:var(--brown);font-weight:800}
+html.projecting h1{margin-top:20px;font-size:clamp(2rem,4vw,4rem)}
+html.projecting .intro{display:none}
+html.projecting .signal{min-height:min(53vh,570px)}
+html.fallback .shell{width:min(1500px,100% - 32px)}
+@media(max-width:680px){
+.shell{width:calc(100% - 28px)}header{padding-top:14px}.brand{font-size:.9rem}header button{font-size:.84rem;padding:.5rem .65rem}
+.board,.controls,.settings{grid-template-columns:1fr}
+.signal{min-height:218px}.score{padding:18px 22px}#points{font-size:4.4rem}
+.controls{gap:14px}.signal h2{font-size:clamp(2rem,9vw,3.3rem)}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Herramienta de aula</div>
+  <button id="fullscreen" type="button" aria-pressed="false">Pantalla completa</button>
+</header>
+<main>
+<h1>Semáforo del ruido</h1>
+<p class="intro">Cuidamos el volumen del aula y avanzamos hacia una meta común.</p>
+<div class="board">
+  <section id="signal" class="signal" data-state="off" aria-label="Semáforo">
+    <div class="lights" aria-hidden="true"><span class="lamp red">×</span><span class="lamp amber">!</span><span class="lamp green">✓</span></div>
+    <div role="status" aria-atomic="true">
+      <p id="stateLabel" class="tag">Micrófono apagado</p>
+      <h2 id="stateTitle">En pausa</h2>
+      <p id="stateHint">Enciende el semáforo para empezar.</p>
+    </div>
+  </section>
+  <section class="score" aria-labelledby="scoreTitle">
+    <h2 id="scoreTitle">Puntos del equipo</h2>
+    <p id="points" aria-live="polite" aria-atomic="true">0</p>
+    <label for="progress">Progreso hacia el siguiente punto</label>
+    <progress id="progress" max="60" value="0"></progress>
+    <p id="countdown">Temporizador en pausa</p>
+    <div class="goal" id="goalCard">
+      <p id="goalStatus" role="status" aria-atomic="true">Meta del equipo · 0 de 5 puntos</p>
+      <progress id="goalProgress" aria-label="Progreso de la meta del equipo" max="5" value="0"></progress>
+    </div>
+    <p id="bestStreak">Mejor racha sin rojo · 0:00</p>
+  </section>
+</div>
+<section class="controls" aria-label="Controles">
+  <div class="actions">
+    <button id="power" type="button" class="primary">Encender el semáforo</button>
+    <button id="reset" type="button">Reiniciar reto</button>
+  </div>
+  <label class="sensitivity" for="sensitivity">
+    <span>Sensibilidad <output id="sensitivityValue" for="sensitivity">50 %</output></span>
+    <input id="sensitivity" type="range" min="0" max="100" value="50" aria-describedby="sensitivityHint">
+    <span class="scale"><span>Menos</span><span>Más</span></span>
+    <span id="sensitivityHint" class="scale">Súbela si el micrófono está lejos de la clase.</span>
+  </label>
+  <label class="check"><input id="sound" type="checkbox"> Aviso sonoro al llegar a rojo</label>
+  <p id="feedback" role="status" hidden></p>
+</section>
+<details>
+  <summary>Reglas y ajustes del aula</summary>
+  <div class="settings">
+    <label class="field">Qué pasa con los puntos al llegar a rojo
+      <select id="penalty">
+        <option value="none" selected>Conservar los puntos</option>
+        <option value="one">Restar un punto</option>
+        <option value="all">Volver a cero</option>
+      </select>
+      <small>Se aplica una vez cada vez que se enciende el rojo.</small>
+    </label>
+    <label class="field">Tolerancia a picos
+      <select id="tolerance">
+        <option value="0">Sin espera</option>
+        <option value="350" selected>0,35 segundos</option>
+        <option value="750">0,75 segundos</option>
+        <option value="1500">1,5 segundos</option>
+      </select>
+      <small>Tiempo seguido por encima del umbral para entrar en rojo.</small>
+    </label>
+    <label class="field">Margen de salida (histéresis)
+      <select id="hysteresis">
+        <option value="0">Sin margen</option>
+        <option value="3" selected>3 dB</option>
+        <option value="6">6 dB</option>
+        <option value="9">9 dB</option>
+      </select>
+      <small>Cuánto debe bajar el nivel relativo para que cambie la luz. El nivel depende del micrófono.</small>
+    </label>
+    <label class="field">Meta del equipo
+      <select id="goal">
+        <option value="3">3 puntos</option>
+        <option value="5" selected>5 puntos</option>
+        <option value="10">10 puntos</option>
+        <option value="15">15 puntos</option>
+      </select>
+      <small>El equipo gana un punto por cada minuto en verde o ámbar.</small>
+    </label>
+    <p class="rules" id="ruleText">Al llegar a rojo conserváis los puntos. Al bajar el volumen, empieza un nuevo minuto para sumar el siguiente.</p>
+  </div>
+</details>
+</main>
+<footer>El sonido se analiza en tu dispositivo. El audio se usa en directo y se descarta. Tus ajustes se guardan en este navegador si el almacenamiento está disponible.<span class="signature">#orientadoracarmenmora</span></footer>
+</div>
+<script>
+'use strict';
+
+const byId = (id) => document.getElementById(id);
+const settings = ['sensitivity', 'sound', 'penalty', 'tolerance', 'hysteresis', 'goal'].map(byId);
+const power = byId('power');
+const signal = byId('signal');
+const root = document.documentElement;
+const storageKey = 'semaforo-del-ruido-ajustes-v1';
+
+const messages = {
+  off: ['Micrófono apagado', 'En pausa', 'Enciende el semáforo para empezar.'],
+  pending: ['Micrófono', 'Conectando…', 'Acepta el permiso del navegador.'],
+  paused: ['Escucha en pausa', 'En pausa', 'Vuelve a esta pestaña o comprueba el micrófono.'],
+  green: ['Verde', '¡Muy bien!', 'Lo estáis haciendo genial.'],
+  amber: ['Ámbar', 'Cuidado', 'Levantad la mano para pedir turno.'],
+  red: ['Rojo', 'Pausa en equipo', 'Guardad silencio, por favor.']
+};
+
+let session = null;
+let points = 0;
+let pointsLost = 0;
+let elapsed = 0;
+let streak = 0;
+let bestStreak = 0;
+let lastSample = null;
+let aboveRedSince = null;
+let light = 'green';
+
+function setText(id, value) {
+  const element = byId(id);
+  if (element.textContent !== String(value)) element.textContent = value;
+}
+
+function showState(state) {
+  signal.dataset.state = state;
+  const [label, title, hint] = messages[state];
+  setText('stateLabel', label);
+  setText('stateTitle', title);
+  setText('stateHint', hint);
+}
+
+function drawScore(running = false) {
+  setText('points', points);
+  const bestSeconds = Math.floor(bestStreak / 1000);
+  const bestMinutes = Math.floor(bestSeconds / 60);
+  setText('bestStreak', `Mejor racha sin rojo · ${bestMinutes}:${String(bestSeconds % 60).padStart(2, '0')}`);
+  const goal = Number(byId('goal').value);
+  const reached = points >= goal;
+  byId('goalCard').dataset.reached = String(reached);
+  byId('goalProgress').max = goal;
+  byId('goalProgress').value = Math.min(points, goal);
+  setText('goalStatus', reached ? '✓ ¡Meta del equipo conseguida!' : `Meta del equipo · ${points} de ${goal} puntos`);
+  const seconds = Math.floor(elapsed / 1000);
+  byId('progress').value = seconds;
+  let countdown = 'Temporizador en pausa';
+  if (running) countdown = `+1 punto en ${60 - seconds} s`;
+  if (signal.dataset.state === 'red') {
+    const result = pointsLost === 1 ? 'Se ha restado 1 punto.' :
+      pointsLost > 1 ? `Se han restado ${pointsLost} puntos.` :
+        points > 0 ? 'Conserváis los puntos ganados.' : '';
+    countdown = [result, 'Al bajar la voz, empieza un nuevo minuto.'].filter(Boolean).join(' ');
+  }
+  setText('countdown', countdown);
+}
+
+function notify(message = '') {
+  setText('feedback', message);
+  byId('feedback').hidden = !message;
+}
+
+function updateSettings() {
+  const sensitivity = byId('sensitivity');
+  setText('sensitivityValue', `${sensitivity.value} %`);
+  sensitivity.setAttribute('aria-valuetext', `${sensitivity.value} por ciento`);
+  const penaltyText = {
+    all: 'Al llegar a rojo se pierden todos los puntos.',
+    one: 'Al llegar a rojo se pierde un punto si hay alguno.',
+    none: 'Al llegar a rojo se conservan los puntos.'
+  };
+  setText('ruleText', `${penaltyText[byId('penalty').value]} El minuto en curso vuelve a cero y el tiempo empieza a contar de nuevo al bajar el volumen.`);
+  aboveRedSince = null;
+}
+
+try {
+  const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  for (const input of settings) {
+    const value = saved[input.id];
+    if (input.type === 'checkbox' && typeof value === 'boolean') input.checked = value;
+    if (input.type === 'range' && Number.isInteger(value) && value >= 0 && value <= 100) input.value = value;
+    if (input.tagName === 'SELECT' && Array.from(input.options).some((option) => option.value === value)) input.value = value;
+  }
+} catch {
+  // The defaults still work if storage is unavailable.
+}
+updateSettings();
+drawScore();
+
+for (const input of settings) {
+  input.addEventListener('input', () => {
+    updateSettings();
+    drawScore(['green', 'amber'].includes(signal.dataset.state));
+    try {
+      const values = Object.fromEntries(settings.map((control) => [
+        control.id, control.type === 'checkbox' ? control.checked :
+          control.type === 'range' ? control.valueAsNumber : control.value
+      ]));
+      localStorage.setItem(storageKey, JSON.stringify(values));
+    } catch {
+      // Settings remain usable for the current page.
+    }
+  });
+}
+
+function readLevel(analyser, samples) {
+  analyser.getFloatTimeDomainData(samples);
+  let total = 0;
+  let squares = 0;
+  for (const sample of samples) {
+    total += sample;
+    squares += sample * sample;
+  }
+  const mean = total / samples.length;
+  const variance = Math.max(1e-12, squares / samples.length - mean * mean);
+  return 10 * Math.log10(variance);
+}
+
+function nextLight(level, now) {
+  const redAt = -18 - 44 * byId('sensitivity').valueAsNumber / 100;
+  const amberAt = redAt - 12;
+  const margin = Number(byId('hysteresis').value);
+  if (light === 'red' && level >= redAt - margin) return 'red';
+
+  if (level >= redAt) {
+    aboveRedSince ??= now;
+    if (now - aboveRedSince >= Number(byId('tolerance').value)) return 'red';
+  } else {
+    aboveRedSince = null;
+  }
+  return level >= amberAt - (light === 'green' ? 0 : margin) ? 'amber' : 'green';
+}
+
+function playWarning(context) {
+  const tone = context.createOscillator();
+  const gain = context.createGain();
+  const start = context.currentTime;
+  tone.frequency.setValueAtTime(520, start);
+  tone.frequency.setValueAtTime(390, start + .12);
+  gain.gain.setValueAtTime(.001, start);
+  gain.gain.exponentialRampToValueAtTime(.12, start + .03);
+  gain.gain.exponentialRampToValueAtTime(.001, start + .27);
+  tone.connect(gain).connect(context.destination);
+  tone.start(start);
+  tone.stop(start + .28);
+}
+
+function sample(now) {
+  const active = session;
+  active.frame = requestAnimationFrame(sample);
+  if (document.hidden || active.context.state !== 'running' || active.stream.getAudioTracks()[0].muted) {
+    pauseSampling();
+    return;
+  }
+  const gap = lastSample === null ? 0 : now - lastSample;
+  if (lastSample !== null && gap < 40) return;
+  if (gap > 500) aboveRedSince = null;
+  lastSample = now;
+  const previous = light;
+  light = nextLight(readLevel(active.analyser, active.samples), now);
+  if (light === 'red' && previous !== 'red') {
+    elapsed = 0;
+    streak = 0;
+    const previousPoints = points;
+    const rule = byId('penalty').value;
+    if (rule === 'all') points = 0;
+    if (rule === 'one') points = Math.max(0, points - 1);
+    pointsLost = previousPoints - points;
+    if (byId('sound').checked) playWarning(active.context);
+  }
+  if (light !== 'red' && previous !== 'red' && gap <= 500) {
+    elapsed += gap;
+    streak += gap;
+    bestStreak = Math.max(bestStreak, streak);
+    if (elapsed >= 60000) {
+      elapsed -= 60000;
+      points += 1;
+    }
+  }
+  if (signal.dataset.state !== light) showState(light);
+  drawScore(light !== 'red');
+}
+
+function pauseSampling() {
+  lastSample = null;
+  aboveRedSince = null;
+  if (session?.analyser && signal.dataset.state !== 'paused') {
+    showState('paused');
+    drawScore();
+  }
+}
+
+function stop(message = '') {
+  const active = session;
+  session = null;
+  if (active) {
+    cancelAnimationFrame(active.frame);
+    active.stream?.getTracks().forEach((track) => track.stop());
+    if (active.context.state !== 'closed') active.context.close().catch(() => {});
+  }
+  lastSample = null;
+  aboveRedSince = null;
+  light = 'green';
+  setText('power', 'Encender el semáforo');
+  showState('off');
+  drawScore();
+  notify(message);
+}
+
+function microphoneError(error) {
+  if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+    return 'Permite el micrófono en los ajustes de este sitio y vuelve a encender el semáforo.';
+  }
+  if (error.name === 'NotFoundError') return 'Conecta un micrófono y vuelve a intentarlo.';
+  return 'No se pudo iniciar el micrófono. Comprueba que esté disponible y vuelve a intentarlo.';
+}
+
+async function start() {
+  notify();
+  const AudioEngine = window.AudioContext || window.webkitAudioContext;
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !AudioEngine) {
+    notify('Abre la aplicación en un navegador compatible desde una dirección HTTPS o localhost para usar el micrófono.');
+    return;
+  }
+  let active;
+  try {
+    active = { context: new AudioEngine() };
+    session = active;
+    showState('pending');
+    setText('power', 'Cancelar');
+    // Resume during the click gesture, before the permission prompt.
+    const resumed = active.context.resume().then(() => true, () => false);
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: true },
+      video: false
+    });
+    if (session !== active) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    active.stream = stream;
+    if (!(await resumed)) throw new Error('AudioContext');
+    if (session !== active) return;
+    const track = stream.getAudioTracks()[0];
+    if (track.readyState !== 'live') throw new Error('AudioTrack');
+    track.addEventListener('ended', () => {
+      if (session === active) stop('El micrófono se desconectó. Vuelve a encender el semáforo.');
+    });
+    track.addEventListener('mute', () => {
+      if (session === active) pauseSampling();
+    });
+    active.analyser = active.context.createAnalyser();
+    active.analyser.fftSize = 2048;
+    active.samples = new Float32Array(active.analyser.fftSize);
+    active.source = active.context.createMediaStreamSource(stream);
+    active.source.connect(active.analyser);
+    setText('power', 'Apagar el semáforo');
+    active.frame = requestAnimationFrame(sample);
+  } catch (error) {
+    if (session === active || !active) stop(microphoneError(error));
+  }
+}
+
+power.addEventListener('click', () => session ? stop() : start());
+byId('reset').addEventListener('click', () => {
+  points = 0;
+  pointsLost = 0;
+  elapsed = 0;
+  streak = 0;
+  bestStreak = 0;
+  lastSample = null;
+  drawScore(['green', 'amber'].includes(signal.dataset.state));
+});
+document.addEventListener('visibilitychange', () => {
+  pauseSampling();
+  if (!document.hidden && session?.context.state === 'suspended') {
+    session.context.resume().catch(() => {});
+  }
+});
+window.addEventListener('pagehide', () => stop());
+
+const fullscreen = byId('fullscreen');
+function syncProjection() {
+  const projecting = Boolean(document.fullscreenElement) || root.classList.contains('fallback');
+  root.classList.toggle('projecting', projecting);
+  fullscreen.setAttribute('aria-pressed', String(projecting));
+  setText('fullscreen', projecting ? 'Salir de pantalla completa' : 'Pantalla completa');
+}
+fullscreen.addEventListener('click', async () => {
+  if (root.classList.contains('fallback')) {
+    root.classList.remove('fallback');
+  } else if (document.fullscreenElement) {
+    try { await document.exitFullscreen(); } catch { /* The control stays in sync. */ }
+  } else {
+    try {
+      await root.requestFullscreen();
+    } catch {
+      root.classList.add('fallback');
+    }
+  }
+  syncProjection();
+});
+document.addEventListener('fullscreenchange', syncProjection);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && root.classList.contains('fallback')) {
+    root.classList.remove('fallback');
+    syncProjection();
+  }
+});
+</script>
+</body>
+</html>
